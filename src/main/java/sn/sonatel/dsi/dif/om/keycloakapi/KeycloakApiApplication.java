@@ -1,4 +1,4 @@
-package sn.sonatel.dsi.dif.om.keycloak.keycloakapi;
+package sn.sonatel.dsi.dif.om.keycloakapi;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
