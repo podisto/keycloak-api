@@ -1,10 +1,20 @@
 package sn.sonatel.dsi.dif.om.keycloakapi.service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -21,7 +31,7 @@ import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationRequest;
 @Service
 @Slf4j
 public class KeycloakServiceImpl implements KeycloakService {
-	
+
 	@Value("${keycloak.credentials.secret}")
 	private String SECRETKEY;
 
@@ -33,6 +43,18 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	@Value("${keycloak.realm}")
 	private String REALM;
+
+	@Override
+	public String getAccessToken(String msidn) {
+		String responseToken = null;
+		try {
+			responseToken = sendPost(this.buildParams(msidn));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return responseToken;
+	}
 
 	@Override
 	public Integer createUser(RegistrationRequest userRequest) {
@@ -78,16 +100,11 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 		return statusId;
 	}
-	
+
 	private UsersResource getKeycloakUserResource() {
 
-		Keycloak kc = KeycloakBuilder.builder()
-				.serverUrl(AUTHURL)
-				.realm("master")
-				.username("admin")
-				.password("admin")
-				.clientId("admin-cli")
-				.resteasyClient(new ResteasyClientBuilder().connectionPoolSize(10).build())
+		Keycloak kc = KeycloakBuilder.builder().serverUrl(AUTHURL).realm("master").username("admin").password("admin")
+				.clientId("admin-cli").resteasyClient(new ResteasyClientBuilder().connectionPoolSize(10).build())
 				.build();
 
 		RealmResource realmResource = kc.realm(REALM);
@@ -95,12 +112,43 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 		return userRessource;
 	}
-	
+
 	private HashMap<String, List<String>> mapValues(RegistrationRequest userRequest) {
 		HashMap<String, List<String>> attributes = new HashMap<>();
-		//attributes.put("hashValue", Arrays.asList(userRequest.getHashValue()));
-		//attributes.put("hashVersion", Arrays.asList(userRequest.getHashVersion()));
+		// attributes.put("hashValue", Arrays.asList(userRequest.getHashValue()));
+		// attributes.put("hashVersion", Arrays.asList(userRequest.getHashVersion()));
 		return attributes;
+	}
+
+	private String sendPost(List<NameValuePair> urlParameters) throws Exception {
+
+		HttpClient client = HttpClientBuilder.create().build();
+		HttpPost post = new HttpPost(AUTHURL + "/realms/" + REALM + "/protocol/openid-connect/token");
+
+		post.setEntity(new UrlEncodedFormEntity(urlParameters));
+
+		HttpResponse response = client.execute(post);
+
+		BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+
+		StringBuffer result = new StringBuffer();
+		String line = "";
+		while ((line = rd.readLine()) != null) {
+			result.append(line);
+		}
+
+		return result.toString();
+	}
+
+	private List<NameValuePair> buildParams(String msidn) {
+		List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
+		urlParameters.add(new BasicNameValuePair("grant_type", "password"));
+		urlParameters.add(new BasicNameValuePair("client_id", CLIENTID));
+		urlParameters.add(new BasicNameValuePair("username", msidn));
+		urlParameters.add(new BasicNameValuePair("password", msidn));
+		urlParameters.add(new BasicNameValuePair("client_secret", SECRETKEY));
+		return urlParameters;
+
 	}
 
 }

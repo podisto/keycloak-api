@@ -1,6 +1,8 @@
 package sn.sonatel.dsi.dif.om.keycloakapi.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +19,20 @@ public class KeycloakController {
 	
 	public KeycloakController(KeycloakService keycloakService) {
 		this.keycloakService = keycloakService;
+	}
+	
+	@GetMapping("/token/{msidn}")
+	public ResponseEntity<?> getTokenUsingCredentials(@PathVariable("msidn") String msidn) {
+
+		String responseToken = null;
+		try {
+			responseToken = keycloakService.getAccessToken(msidn);
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		return ResponseEntity.ok(responseToken);
+
 	}
 	
 	@PostMapping("/registerClient")
