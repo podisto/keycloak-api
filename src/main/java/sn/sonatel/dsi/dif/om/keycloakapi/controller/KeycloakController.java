@@ -8,11 +8,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.extern.slf4j.Slf4j;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationRequest;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationResponse;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.TokenResponse;
 import sn.sonatel.dsi.dif.om.keycloakapi.service.KeycloakService;
 
 @RestController
 @RequestMapping("/keycloak")
+@Slf4j
 public class KeycloakController {
 	
 	private final KeycloakService keycloakService;
@@ -22,9 +26,9 @@ public class KeycloakController {
 	}
 	
 	@GetMapping("/token/{msidn}")
-	public ResponseEntity<?> getTokenUsingCredentials(@PathVariable("msidn") String msidn) {
+	public ResponseEntity<TokenResponse> getTokenUsingCredentials(@PathVariable("msidn") String msidn) {
 
-		String responseToken = null;
+		TokenResponse responseToken = null;
 		try {
 			responseToken = keycloakService.getAccessToken(msidn);
 		} catch (Exception e) {
@@ -36,15 +40,14 @@ public class KeycloakController {
 	}
 	
 	@PostMapping("/registerClient")
-	public ResponseEntity<?> createUser(@RequestBody RegistrationRequest request) {
+	public ResponseEntity<RegistrationResponse> createUser(@RequestBody RegistrationRequest request) {
 		try {
-			int status = keycloakService.createUser(request);
-			return ResponseEntity.ok(status);
+			RegistrationResponse response = keycloakService.createUser(request);
+			return ResponseEntity.ok(response);
 		}
 		catch (Exception ex) {
-			ex.printStackTrace();
+			log.trace("exception caught {}", ex);
 			return ResponseEntity.badRequest().build();
-
 		}
 	}
 

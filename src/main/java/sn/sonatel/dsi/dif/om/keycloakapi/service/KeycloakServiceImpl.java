@@ -25,8 +25,12 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationRequest;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationResponse;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.TokenResponse;
 
 @Service
 @Slf4j
@@ -45,20 +49,22 @@ public class KeycloakServiceImpl implements KeycloakService {
 	private String REALM;
 
 	@Override
-	public String getAccessToken(String msidn) {
-		String responseToken = null;
+	public TokenResponse getAccessToken(String msidn) {
+		TokenResponse responseToken = null;
 		try {
 			responseToken = sendPost(this.buildParams(msidn));
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.trace("Exception {}", e);
 		}
 
 		return responseToken;
 	}
 
 	@Override
-	public Integer createUser(RegistrationRequest userRequest) {
+	public RegistrationResponse createUser(RegistrationRequest userRequest) {
 		int statusId = 0;
+		TokenResponse tokenResponse;
+		RegistrationResponse response = new RegistrationResponse();
 		try {
 			UsersResource userRessource = getKeycloakUserResource();
 			UserRepresentation user = new UserRepresentation();
@@ -85,32 +91,34 @@ public class KeycloakServiceImpl implements KeycloakService {
 				// Set password credential
 				userRessource.get(userId).resetPassword(passwordCred);
 				log.info("Username {} created in keycloak successfully", userRequest.getMsidn());
-			}
-
-			else if (statusId == 409) {
-				log.info("Username {} already present in keycloak", userRequest.getMsidn());
+				// get token
+				tokenResponse = this.getAccessToken(userRequest.getMsidn());
+				response = this.buildRegistrationResponse(tokenResponse, statusId);
 			} else {
-				log.info("Username {} could not be created in keycloak", userRequest.getMsidn());
+				response.setStatusCode(String.valueOf(statusId));
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.trace("Exception {}", e);
 
 		}
 
-		return statusId;
+		return response;
 	}
 
 	private UsersResource getKeycloakUserResource() {
 
-		Keycloak kc = KeycloakBuilder.builder().serverUrl(AUTHURL).realm("master").username("admin").password("admin")
-				.clientId("admin-cli").resteasyClient(new ResteasyClientBuilder().connectionPoolSize(10).build())
+		Keycloak kc = KeycloakBuilder.builder()
+				.serverUrl(AUTHURL)
+				.realm("master")
+				.username("admin")
+				.password("admin")
+				.clientId("admin-cli")
+				.resteasyClient(new ResteasyClientBuilder().connectionPoolSize(10).build())
 				.build();
 
 		RealmResource realmResource = kc.realm(REALM);
-		UsersResource userRessource = realmResource.users();
-
-		return userRessource;
+		return realmResource.users();
 	}
 
 	private HashMap<String, List<String>> mapValues(RegistrationRequest userRequest) {
@@ -120,7 +128,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 		return attributes;
 	}
 
-	private String sendPost(List<NameValuePair> urlParameters) throws Exception {
+	private TokenResponse sendPost(List<NameValuePair> urlParameters) throws Exception {
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPost post = new HttpPost(AUTHURL + "/realms/" + REALM + "/protocol/openid-connect/token");
@@ -137,11 +145,12 @@ public class KeycloakServiceImpl implements KeycloakService {
 			result.append(line);
 		}
 
-		return result.toString();
+		ObjectMapper mapper = new ObjectMapper();
+		return mapper.readValue(result.toString(), TokenResponse.class);
 	}
 
 	private List<NameValuePair> buildParams(String msidn) {
-		List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
+		List<NameValuePair> urlParameters = new ArrayList<>();
 		urlParameters.add(new BasicNameValuePair("grant_type", "password"));
 		urlParameters.add(new BasicNameValuePair("client_id", CLIENTID));
 		urlParameters.add(new BasicNameValuePair("username", msidn));
@@ -149,6 +158,15 @@ public class KeycloakServiceImpl implements KeycloakService {
 		urlParameters.add(new BasicNameValuePair("client_secret", SECRETKEY));
 		return urlParameters;
 
+	}
+	
+	private RegistrationResponse buildRegistrationResponse(TokenResponse tokenResponse, int statusId) {
+		RegistrationResponse response = new RegistrationResponse();
+		response.setAccessToken(tokenResponse.getAccessToken());
+		response.setRefreshToken(tokenResponse.getRefreshToken());
+		response.setAccessTokenExpirationDelay(tokenResponse.getExpiresIn());
+		response.setStatusCode(String.valueOf(statusId));
+		return response;
 	}
 
 }
