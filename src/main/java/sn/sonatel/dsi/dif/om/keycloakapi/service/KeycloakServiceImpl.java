@@ -3,6 +3,7 @@ package sn.sonatel.dsi.dif.om.keycloakapi.service;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -28,9 +29,10 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.AccessTokenRequest;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationRequest;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationResponse;
-import sn.sonatel.dsi.dif.om.keycloakapi.model.TokenResponse;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.AccessTokenResponse;
 
 @Service
 @Slf4j
@@ -49,8 +51,8 @@ public class KeycloakServiceImpl implements KeycloakService {
 	private String REALM;
 
 	@Override
-	public TokenResponse getAccessToken(String msidn) {
-		TokenResponse responseToken = null;
+	public AccessTokenResponse getAccessToken(String msidn) {
+		AccessTokenResponse responseToken = null;
 		try {
 			responseToken = sendPost(this.buildParams(msidn));
 		} catch (Exception e) {
@@ -63,7 +65,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 	@Override
 	public RegistrationResponse createUser(RegistrationRequest userRequest) {
 		int statusId = 0;
-		TokenResponse tokenResponse;
+		AccessTokenResponse tokenResponse;
 		RegistrationResponse response = new RegistrationResponse();
 		try {
 			UsersResource userRessource = getKeycloakUserResource();
@@ -123,12 +125,12 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	private HashMap<String, List<String>> mapValues(RegistrationRequest userRequest) {
 		HashMap<String, List<String>> attributes = new HashMap<>();
-		// attributes.put("hashValue", Arrays.asList(userRequest.getHashValue()));
-		// attributes.put("hashVersion", Arrays.asList(userRequest.getHashVersion()));
+		attributes.put("hashValue", Arrays.asList("123"));
+		attributes.put("hashVersion", Arrays.asList("123"));
 		return attributes;
 	}
 
-	private TokenResponse sendPost(List<NameValuePair> urlParameters) throws Exception {
+	private AccessTokenResponse sendPost(List<NameValuePair> urlParameters) throws Exception {
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPost post = new HttpPost(AUTHURL + "/realms/" + REALM + "/protocol/openid-connect/token");
@@ -139,14 +141,14 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 		BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 
-		StringBuffer result = new StringBuffer();
+		StringBuilder result = new StringBuilder();
 		String line = "";
 		while ((line = rd.readLine()) != null) {
 			result.append(line);
 		}
 
 		ObjectMapper mapper = new ObjectMapper();
-		return mapper.readValue(result.toString(), TokenResponse.class);
+		return mapper.readValue(result.toString(), AccessTokenResponse.class);
 	}
 
 	private List<NameValuePair> buildParams(String msidn) {
@@ -160,7 +162,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	}
 	
-	private RegistrationResponse buildRegistrationResponse(TokenResponse tokenResponse, int statusId) {
+	private RegistrationResponse buildRegistrationResponse(AccessTokenResponse tokenResponse, int statusId) {
 		RegistrationResponse response = new RegistrationResponse();
 		response.setAccessToken(tokenResponse.getAccessToken());
 		response.setRefreshToken(tokenResponse.getRefreshToken());

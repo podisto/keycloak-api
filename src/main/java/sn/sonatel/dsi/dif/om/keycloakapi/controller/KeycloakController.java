@@ -9,9 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.extern.slf4j.Slf4j;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.AccessTokenRequest;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationRequest;
 import sn.sonatel.dsi.dif.om.keycloakapi.model.RegistrationResponse;
-import sn.sonatel.dsi.dif.om.keycloakapi.model.TokenResponse;
+import sn.sonatel.dsi.dif.om.keycloakapi.model.AccessTokenResponse;
 import sn.sonatel.dsi.dif.om.keycloakapi.service.KeycloakService;
 
 @RestController
@@ -25,12 +26,12 @@ public class KeycloakController {
 		this.keycloakService = keycloakService;
 	}
 	
-	@GetMapping("/token/{msidn}")
-	public ResponseEntity<TokenResponse> getTokenUsingCredentials(@PathVariable("msidn") String msidn) {
+	@PostMapping("/token")
+	public ResponseEntity<AccessTokenResponse> getTokenUsingCredentials(@RequestBody AccessTokenRequest request) {
 
-		TokenResponse responseToken = null;
+		AccessTokenResponse responseToken = null;
 		try {
-			responseToken = keycloakService.getAccessToken(msidn);
+			responseToken = keycloakService.getAccessToken(request.getUsername());
 		} catch (Exception e) {
 			return ResponseEntity.badRequest().build();
 		}
