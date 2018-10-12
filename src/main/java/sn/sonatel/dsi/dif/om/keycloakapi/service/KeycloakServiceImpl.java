@@ -64,7 +64,6 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	@Override
 	public RegistrationResponse createUser(RegistrationRequest userRequest) {
-		int statusId = 0;
 		AccessTokenResponse tokenResponse;
 		RegistrationResponse response = new RegistrationResponse();
 		try {
@@ -78,7 +77,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 			Response result = userRessource.create(user);
 			log.info("Keycloak create user response code {} ", result.getStatus());
 
-			statusId = result.getStatus();
+			int statusId = result.getStatus();
 
 			if (statusId == 201) {
 				String userId = result.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
